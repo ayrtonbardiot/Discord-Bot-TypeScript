@@ -4,7 +4,6 @@ export default class Logger {
     }
 
     public info(message: string): void {
-        //const date: string 
         console.log("[Bot] " + message);
     }
 

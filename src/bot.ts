@@ -1,39 +1,29 @@
 import { Client, Collection, DiscordAPIError, Message } from "discord.js";
 import Logger from "./Logger";
-import { readdir } from "fs"
+import { readdir, readdirSync } from "fs"
 import config from './config.json'
 
 export default class Bot {
 
     private _token: string;
-    private _client: Client;
-    private _logger: Logger;
-    private _prefix: string;
-    private _commands: Collection<string, any>;
+    static _client: Client;
+    private _eventFiles: string[];
+    static  _prefix: string; 
+    static  _commands: Collection<string, any>;
 
     constructor(token: string){
         this._token = token;
-        this._client = new Client();
-        this._logger = new Logger();
-        this._prefix = config.prefix;
-        this._commands = new Collection();
+        Bot._client = new Client();
+        Bot._commands = new Collection();
+        Bot._prefix = config.prefix;
+        this._eventFiles = readdirSync('./src/Events').filter((file: string) => file.endsWith('.ts'))
         this.registerCommands();
+        this.registerEvents();
         this.init();
     }
 
     private init(): void {
-        this._client.on('ready', () => {
-            this._logger.info(this._client.user?.username + " prêt !")
-        })
-        this._client.on('message', msg => {
-            if(msg.content.startsWith(this._prefix)){
-                const cmd = this._commands.get('info');
-                cmd?.run(msg)
-            }
-
-
-        })
-        this._client.login(this._token);
+        Bot._client.login(this._token);
     }
 
     private registerCommands(): void {
@@ -42,11 +32,21 @@ export default class Bot {
             files.filter(file => file.endsWith('.ts')).forEach((file: string) => {
                 const cmd = require(`./Commands/${file}`);
                 cmd.names.forEach((name: string) => {
-                    this._commands.set(name, cmd)
+                    Bot._commands.set(name, cmd)
                 });
-                //this._commands.set(cmd.name, cmd);
             })
         })
+    }
+
+    private registerEvents(): void {
+        for(const eventFile of this._eventFiles){
+            const ev = require(`./Events/${eventFile}`)
+            if(ev.once) {
+                Bot._client.once(ev.name, (...args) => ev.execute(...args))
+            } else {
+                Bot._client.on(ev.name, (...args) => ev.execute(...args))
+            }
+        }
     }
 
 }
