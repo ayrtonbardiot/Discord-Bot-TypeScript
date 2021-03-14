@@ -7,9 +7,15 @@ export const name: string = 'message'
 export const once: boolean = false;
 
 export function execute(msg: Message):void{
-    if(msg.content.startsWith(Bot._prefix)){
-        const cmdtxt: string = msg.content.split(Bot._prefix)[1]
-        const command = Bot._commands.get(cmdtxt);
-        command?.run(msg)
+	if (!msg.content.startsWith(Bot._prefix) || msg.author.bot) return;
+
+	const args: string[] = msg.content.slice(Bot._prefix.length).trim().split(/ +/);
+	const command: string = args.shift()?.toLowerCase()!;
+    const cmdd = Bot._commands.get(command);
+    if (command != null) {
+        if (msg.member?.hasPermission(cmdd.permission))
+            cmdd?.run(msg, args)
+        else
+            msg.reply('tu n\'as pas le droit d\'utiliser cette commande !')
     }
 }
